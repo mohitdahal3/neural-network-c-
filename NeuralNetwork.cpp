@@ -5,6 +5,7 @@
 #include <vector>
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb_image.h>
+#include<algorithm>
 
 using namespace std;
 using namespace Eigen;
@@ -14,7 +15,7 @@ double activationFunction(double x){
 }
 
 double scaleData(double x){
-    return (((255-x)/255) * 0.99)+ 0.01;
+    return ((x/255) * 0.99)+ 0.01;
 }
 
 MatrixXd reshape(MatrixXd mat , int rows , int cols){
@@ -58,16 +59,18 @@ MatrixXd loadData(string fileToOpen){
     return Map<Matrix<double, Dynamic, Dynamic, RowMajor>>(matrixEntries.data(), matrixRowNumber, matrixEntries.size() / matrixRowNumber);
 }
 
-int findMaxIndex(MatrixXd mat) {
-    double maxValue = mat.maxCoeff();
-    int maxIndex = 0;
-    for(int i = 0; i < mat.size(); i++) {
-        if(mat(i) == maxValue) {
-            maxIndex = i;
+int findIndex(MatrixXd mat, int nthLargest) {
+    MatrixXd sorted_mat = mat;
+    sort(sorted_mat.data(), sorted_mat.data() + mat.size(), greater<double>());
+    double nth_largest = sorted_mat(nthLargest-1);
+    int index = -1;
+    for (int i = 0; i < mat.size(); i++) {
+        if (mat(i) == nth_largest) {
+            index = i;
             break;
         }
     }
-    return maxIndex;
+    return index;
 }
 
 
@@ -129,8 +132,7 @@ class NeuralNetwork{
 };
 
 int main(){
-    NeuralNetwork n(784,350,10,0.1);
-
+    NeuralNetwork n(784,350,10,0.2);
 
     //////////////////////////////////////////Training//////////////////////////////////////////////////
     // n.wih = loadData("weights_input_hidden.csv");
@@ -163,6 +165,17 @@ int main(){
     // }
     
 
+    //////////////////////////////////////Training with own digits///////////////////////////////////////
+    // n.wih = loadData("weights_input_hidden.csv");
+    // n.who = loadData("weights_hidden_output.csv");
+    // int label = 6;
+    // MatrixXd input = imgToMatrix("img_query.png");
+    // input = input.unaryExpr(&scaleData);
+    // input = reshape(input , 28,28);
+    // MatrixXd targets = MatrixXd::Constant(1,10,0.01);
+    // targets(0 , label) = 0.99;
+    // n.train(input , targets);
+    // cout << "Done training with your example!";
 
 
 
@@ -185,7 +198,7 @@ int main(){
     //     inputVector.erase(inputVector.begin());
     //     Map<MatrixXd> inputs(inputVector.data(),1,inputVector.size());
     //     MatrixXd output = n.query(inputs);
-    //     int guess = findMaxIndex(output);
+    //     int guess = findIndex(output , 1);
     //     cout << "Correct:\t" << label << "\nGuessed:\t" <<guess<<endl<<endl;
     //     if(guess == label){
     //         correctGuess++;
@@ -199,16 +212,18 @@ int main(){
 
     //////////////////////////////////////////Querying////////////////////////////////////////////////
     n.wih = loadData("weights_input_hidden.csv");
-    n.who = loadData("weights_hidden_output.csv");    
+    n.who = loadData("weights_hidden_output.csv");
     MatrixXd input = imgToMatrix("img_query.png");
     input = input.unaryExpr(&scaleData);
     input = reshape(input , 28,28);
     MatrixXd output = n.query(input);
-    int guess = findMaxIndex(output);
-    cout << output <<endl;
-    cout << "The guessed number is:\t" << guess;
-    cout << "\nAccuracy: \t" << output.maxCoeff() * 100 << "%";
-
-
+    // saveData("myimg.csv" , input); //
+    int guess = findIndex(output , 1);
+    int g2 = findIndex(output , 2);
+    int g3 = findIndex(output , 3);
+    // cout << output <<endl; //
+    cout << "The guessed number is:\t" << guess << endl;
+    cout << "Accuracy: \t" << output.maxCoeff() * 100 << "%" << endl;
+    cout << "Possible numbers:\t"<< g2<< " (" << output(g2,0)*100 << "%)" << "\t"<< g3<< " (" << output(g3,0)*100 << "%)" << endl;
     return 0;
 }
